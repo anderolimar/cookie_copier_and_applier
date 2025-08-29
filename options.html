@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Opções — Cookie Copier & Applier</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    h1 { font-size: 20px; margin-bottom: 12px; }
+    label { display:block; font-weight:600; margin: 12px 0 6px; }
+    textarea { width: 100%; min-height: 160px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .row { display:flex; gap:8px; align-items:center; margin-top:12px; }
+    button { padding: 8px 12px; border-radius: 10px; border: 1px solid #ddd; background:#fafafa; cursor:pointer; }
+    button:hover { background:#f0f0f0; }
+    .muted { color:#666; font-size:12px; }
+    .pill { display:inline-block; background:#efefef; border-radius:999px; padding:2px 8px; margin-right:6px; }
+  </style>
+</head>
+<body>
+  <h1>Cookie Copier & Applier — Opções</h1>
+  <label for="cookieNames">Cookie names to copy (one per line)</label>
+  <textarea id="cookieNames" placeholder="ex:\nsessionid\ncsrftoken\naccess_token"></textarea>
+  <div class="row">
+    <button id="saveBtn">Save</button>
+    <button id="loadBtn">Reload</button>
+    <span id="status" class="muted"></span>
+  </div>
+  <h2>Pré-visualização</h2>
+  <div id="preview"></div>
+
+
+
+<h2>Statics Cookies</h2>
+<label for="staticCookies">Statics cookies list (one per line on format <code>name=value</code>)</label>
+<textarea id="staticCookies" placeholder="ex:\nrole=admin\nfeature_flag=true"></textarea>
+<div class="row">
+  <button id="saveStaticBtn">Save Statics</button>
+  <button id="loadStaticBtn">Reload Statics</button>
+  <span id="statusStatic" class="muted"></span>
+</div>
+
+<h2>Preview Statics</h2>
+<div id="previewStatic"></div>
+
+
+  <script src="options.js"></script>
+</body>
+</html>
