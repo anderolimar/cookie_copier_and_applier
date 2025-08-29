@@ -1,78 +1,121 @@
-const textarea = document.getElementById("cookieNames");
-const statusEl = document.getElementById("status");
-const previewEl = document.getElementById("preview");
-const saveBtn = document.getElementById("saveBtn");
-const loadBtn = document.getElementById("loadBtn");
+function renderList(listId, items, onRemove) {
+  const ul = document.getElementById(listId);
+  ul.innerHTML = "";
+  items.forEach((item, index) => {
+    const li = document.createElement("li");
+    li.className = "collection-item";
 
-function parseNames(text) {
-  return text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = item;
+    input.className = "browser-default";
+    input.dataset.index = index;
+
+    const removeBtn = document.createElement("a");
+    removeBtn.className = "btn-small red waves-effect waves-light action-btn";
+    removeBtn.innerHTML = '<i class="material-icons">delete</i>';
+    removeBtn.addEventListener("click", () => onRemove(index));
+
+    li.appendChild(input);
+    li.appendChild(removeBtn);
+    ul.appendChild(li);
+  });
 }
 
-function renderPreview(names) {
-  previewEl.innerHTML = names.length
-    ? names.map(n => `<span class="pill">${n}</span>`).join(" ")
-    : `<span class="muted">No name configured.</span>`;
+function restoreOptions() {
+  chrome.storage.sync.get(
+    { cookieNames: [], staticCookies: [] },
+    (items) => {
+      renderList("cookieNamesList", items.cookieNames, (i) => {
+        items.cookieNames.splice(i, 1);
+        chrome.storage.sync.set({ cookieNames: items.cookieNames });
+        restoreOptions();
+      });
+      renderList("staticCookiesList", items.staticCookies, (i) => {
+        items.staticCookies.splice(i, 1);
+        chrome.storage.sync.set({ staticCookies: items.staticCookies });
+        restoreOptions();
+      });
+    }
+  );
 }
 
-async function load() {
-  const { cookieNames } = await chrome.storage.local.get({ cookieNames: [] });
-  textarea.value = cookieNames.join("\n");
-  renderPreview(cookieNames);
-  statusEl.textContent = "";
-}
+// Add cookie name
+document.getElementById("addCookieName").addEventListener("click", () => {
+  const input = document.getElementById("newCookieName");
+  const value = input.value.trim();
+  if (!value) return;
+  chrome.storage.sync.get({ cookieNames: [] }, (items) => {
+    items.cookieNames.push(value);
+    chrome.storage.sync.set({ cookieNames: items.cookieNames }, restoreOptions);
+  });
+  input.value = "";
+});
 
-async function save() {
-  const names = parseNames(textarea.value);
-  await chrome.storage.local.set({ cookieNames: names });
-  renderPreview(names);
-  statusEl.textContent = "Saved!";
-  setTimeout(() => (statusEl.textContent = ""), 1500);
-}
+// Add static cookie
+document.getElementById("addStaticCookie").addEventListener("click", () => {
+  const input = document.getElementById("newStaticCookie");
+  const value = input.value.trim();
+  if (!value) return;
+  chrome.storage.sync.get({ staticCookies: [] }, (items) => {
+    items.staticCookies.push(value);
+    chrome.storage.sync.set({ staticCookies: items.staticCookies }, restoreOptions);
+  });
+  input.value = "";
+});
 
-saveBtn.addEventListener("click", save);
-loadBtn.addEventListener("click", load);
-document.addEventListener("DOMContentLoaded", load);
+// Save options
+document.getElementById("save").addEventListener("click", () => {
+  const cookieInputs = document.querySelectorAll("#cookieNamesList input");
+  const staticInputs = document.querySelectorAll("#staticCookiesList input");
 
+  const cookieNames = Array.from(cookieInputs).map((i) => i.value.trim()).filter(Boolean);
+  const staticCookies = Array.from(staticInputs).map((i) => i.value.trim()).filter(Boolean);
 
-const staticTextarea = document.getElementById("staticCookies");
-const statusStaticEl = document.getElementById("statusStatic");
-const previewStaticEl = document.getElementById("previewStatic");
-const saveStaticBtn = document.getElementById("saveStaticBtn");
-const loadStaticBtn = document.getElementById("loadStaticBtn");
+  chrome.storage.sync.set({ cookieNames, staticCookies }, () => {
+    const status = document.getElementById("status");
+    status.textContent = "Options saved.";
+    setTimeout(() => (status.textContent = ""), 2000);
+  });
+});
 
-function parseStaticCookies(text) {
-  return text
-    .split(/\r?\n/)
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(line => {
-      const [name, ...rest] = line.split("=");
-      return { name: name.trim(), value: rest.join("=").trim() };
-    })
-    .filter(c => c.name && c.value);
-}
+// Export JSON
+document.getElementById("exportOptions").addEventListener("click", () => {
+  chrome.storage.sync.get({ cookieNames: [], staticCookies: [] }, (items) => {
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cookie_copier_options.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+});
 
-function renderStaticPreview(cookies) {
-  previewStaticEl.innerHTML = cookies.length
-    ? cookies.map(c => `<span class="pill">${c.name}=${c.value}</span>`).join(" ")
-    : `<span class="muted">No static cookies set.</span>`;
-}
+// Import JSON
+document.getElementById("importOptions").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
 
-async function loadStatic() {
-  const { staticCookies } = await chrome.storage.local.get({ staticCookies: [] });
-  staticTextarea.value = staticCookies.map(c => `${c.name}=${c.value}`).join("\n");
-  renderStaticPreview(staticCookies);
-  statusStaticEl.textContent = "";
-}
+document.getElementById("importFile").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      chrome.storage.sync.set(
+        {
+          cookieNames: data.cookieNames || [],
+          staticCookies: data.staticCookies || []
+        },
+        restoreOptions
+      );
+    } catch (err) {
+      alert("Invalid JSON file");
+    }
+  };
+  reader.readAsText(file);
+});
 
-async function saveStatic() {
-  const cookies = parseStaticCookies(staticTextarea.value);
-  await chrome.storage.local.set({ staticCookies: cookies });
-  renderStaticPreview(cookies);
-  statusStaticEl.textContent = "Saved!";
-  setTimeout(() => (statusStaticEl.textContent = ""), 1500);
-}
-
-saveStaticBtn.addEventListener("click", saveStatic);
-loadStaticBtn.addEventListener("click", loadStatic);
-document.addEventListener("DOMContentLoaded", loadStatic);
+document.addEventListener("DOMContentLoaded", restoreOptions);
