@@ -14,11 +14,13 @@ chrome.contextMenus.removeAll(() => {
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const tabId = tab?.id;
   if (info.menuItemId === "copyCookies") {
     chrome.storage.sync.get({ cookieNames: [] }, async (items) => {
       const cookies = await chrome.cookies.getAll({ url: tab.url });
       copiedCookies = cookies.filter(c => items.cookieNames.includes(c.name));
-      await navigator.clipboard.writeText(JSON.stringify(copiedCookies, null, 2));
+      // await navigator.clipboard.writeText(JSON.stringify(copiedCookies, null, 2));
+      await copyTextToClipboardOnPage(tabId, JSON.stringify(copiedCookies, null, 2));
       console.log("Copied cookies:", copiedCookies);
     });
   }
@@ -48,3 +50,27 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     });
   }
 });
+
+// Copia texto para clipboard na página (Content Script ad hoc)
+async function copyTextToClipboardOnPage(tabId, text) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (t) => navigator.clipboard.writeText(t),
+      args: [text]
+    });
+  } catch (e) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (t) => {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      },
+      args: [text]
+    });
+  }
+}
