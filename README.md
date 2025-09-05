@@ -12,7 +12,7 @@ This Google Chrome extension allows you to **copy selected cookies** from one pa
 - **Apply cookies**: applies the copied cookies + static cookies to the current tab.
 - **Static cookies**: manually configured (in `name=value` format), always applied together with the copied ones.
 - **Extension options**: allows you to configure which cookie names should be copied and which static cookies should always be set.
-- **Clipboard**: when copying, cookies are also exported as JSON to your clipboard.
+- **Clipboard**: when copying, cookies are also exported as Javascript code.
 
 ---
 
