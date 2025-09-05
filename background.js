@@ -20,7 +20,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       const cookies = await chrome.cookies.getAll({ url: tab.url });
       copiedCookies = cookies.filter(c => items.cookieNames.includes(c.name));
       // await navigator.clipboard.writeText(JSON.stringify(copiedCookies, null, 2));
-      await copyTextToClipboardOnPage(tabId, JSON.stringify(copiedCookies, null, 2));
+      chrome.storage.sync.get({ staticCookies: [] }, async (items) => {
+        await copyTextToClipboardOnPage(tabId, formatDocumentCookies(copiedCookies, items.staticCookies));
+      });
       console.log("Copied cookies:", copiedCookies);
     });
   }
@@ -50,6 +52,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     });
   }
 });
+
+function formatDocumentCookies(copiedCookies, staticCookies) {
+  var result = `<script>
+  `
+  for (const c of copiedCookies) {
+    result += `document.cookie = "${c.name}=${c.value}; path=/";
+    `
+  }
+  for (const s of staticCookies) {
+    result += `document.cookie = "${s}; path=/";
+    `
+  }
+
+  result += `</script>`
+  return result
+
+}
 
 // Copia texto para clipboard na página (Content Script ad hoc)
 async function copyTextToClipboardOnPage(tabId, text) {
